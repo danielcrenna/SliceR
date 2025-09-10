@@ -38,9 +38,14 @@ public class AuthorizationMiddlewareResultHandlerTests
     {
         // Arrange
         var handler = new SliceR.Authorization.AuthorizationMiddlewareResultHandler();
-        var context = new DefaultHttpContext();
-        context.Response.Body = new MemoryStream();
-        
+        var context = new DefaultHttpContext
+        {
+            Response =
+            {
+                Body = new MemoryStream()
+            }
+        };
+
         var requirements = new IAuthorizationRequirement[] { new DenyAnonymousAuthorizationRequirement() };
         var policy = new AuthorizationPolicy(requirements, ["TestScheme"]);
         

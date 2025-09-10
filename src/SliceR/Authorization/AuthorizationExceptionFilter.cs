@@ -24,9 +24,11 @@ internal sealed class AuthorizationExceptionFilter : IExceptionFilter
             Title = title,
             Status = statusCode,
             Detail = $"Failed requirement: {exception.FailedRequirement}",
+            Extensions =
+            {
+                ["errors"] = exception.Errors
+            }
         };
-        
-        problemDetails.Extensions["errors"] = exception.Errors;
 
         context.Result = new ObjectResult(problemDetails) { StatusCode = statusCode };
         context.ExceptionHandled = true;

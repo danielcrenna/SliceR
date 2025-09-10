@@ -170,6 +170,85 @@ SliceR adds pipeline behaviors to MediatR:
 
 When a request fails validation or authorization, appropriate exceptions are thrown and handled by the registered exception filters.
 
+## Working with MVC Controllers
+
+### Automatic Exception Handling
+
+When you call `AddSliceR()`, it automatically registers two exception filters that convert validation and authorization exceptions into standard ProblemDetails responses:
+
+1. **ValidationExceptionFilter**: Catches `ValidationException` from FluentValidation and returns a 400 Bad Request with `ValidationProblemDetails`
+2. **AuthorizationExceptionFilter**: Catches `AuthorizationFailedException` and returns either 401 Unauthorized or 403 Forbidden with `ProblemDetails`
+
+These filters are automatically added to your MVC pipeline, so you don't need any additional configuration. Simply send your MediatR commands/queries from your controllers:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class UsersController : ControllerBase
+{
+    private readonly IMediator _mediator;
+    
+    public UsersController(IMediator mediator) => _mediator = mediator;
+    
+    [HttpPost]
+    public async Task<IActionResult> CreateUser(CreateUserCommand command)
+    {
+        // Validation and authorization happen automatically
+        // If validation fails, returns 400 with ValidationProblemDetails
+        // If authorization fails, returns 401/403 with ProblemDetails
+        var result = await _mediator.Send(command);
+        return Ok(result);
+    }
+}
+```
+
+### What Gets Converted to ProblemDetails
+
+The exception filters handle the following scenarios:
+
+**ValidationExceptionFilter:**
+- Converts `ValidationException` to HTTP 400 Bad Request
+- Returns `ValidationProblemDetails` with field-level errors
+- Groups errors by property name for easy client-side processing
+
+**AuthorizationExceptionFilter:**
+- Converts `AuthorizationFailedException` to:
+  - HTTP 401 Unauthorized when authentication is missing
+  - HTTP 403 Forbidden when authorization policy fails
+- Returns `ProblemDetails` with error details in extensions
+
+### Example Response Bodies
+
+Validation failure response:
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "Bad Request",
+  "status": 400,
+  "detail": "Validation failed",
+  "errors": {
+    "Email": ["Email is required", "Email must be a valid email address"],
+    "Password": ["Password must be at least 8 characters"]
+  }
+}
+```
+
+Authorization failure response:
+```json
+{
+  "title": "Authorization Failed",
+  "status": 403,
+  "detail": "Failed requirement: users.delete",
+  "errors": ["User does not have permission to delete users"]
+}
+```
+
+### Important Notes for Controller Usage
+
+- **No Try-Catch Needed**: The exception filters handle exceptions automatically
+- **Consistent API Responses**: All validation and authorization failures return standard ProblemDetails
+- **Works with API Controllers**: The filters are registered globally and work with all controllers
+
 ## Advanced Configuration
 
 ### Custom Authorization Provider

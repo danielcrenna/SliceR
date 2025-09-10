@@ -398,3 +398,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# API Keys and sensitive configuration
+*.apikey
+*.apikeys
+nuget.config
+.nuget/SliceR.apikey
+**/appsettings.local.json
+**/secrets.json
