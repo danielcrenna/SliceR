@@ -1,7 +1,8 @@
 using System.Security.Claims;
 using FakeItEasy;
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using MediatR;
 using SliceR.Authorization;
 using Xunit;
 
@@ -17,7 +18,7 @@ public class AuthorizationBehaviorTests
     public record TestResourceRequest : IAuthorizedResourceRequest<object, string>
     {
         public string? PolicyName { get; init; }
-        public object Resource { get; init; } = new();
+        public object? Resource { get; set; } = new();
     }
     
     private readonly RequestHandlerDelegate<string> _nextMock = _ => Task.FromResult("Success");
@@ -43,7 +44,8 @@ public class AuthorizationBehaviorTests
         var httpContextAccessor = A.Fake<IHttpContextAccessor>();
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(null);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
         
         // Act & Assert
@@ -66,7 +68,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
         
         // Act & Assert
@@ -89,7 +92,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = null };
         
         // Act
@@ -111,7 +115,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = string.Empty };
         
         // Act
@@ -141,7 +146,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
         
         // Act
@@ -164,7 +170,8 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
         var resource = new object();
-        var behavior = new AuthorizationBehavior<TestResourceRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestResourceRequest { PolicyName = "test-policy", Resource = resource };
         
         // Act
@@ -186,7 +193,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
         
         // Act & Assert
@@ -209,7 +217,8 @@ public class AuthorizationBehaviorTests
         };
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
         
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor);
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
         
         // Act & Assert

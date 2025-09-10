@@ -30,14 +30,24 @@ using SliceR;
 
 // ...
 
-services.AddSliceR(typeof(YourStartupClass).Assembly);
+services.AddSliceR(typeof(YourStartupClass).Assembly)
+    .WithResourceResolvers(); // Enable automatic resource resolution
 ```
 
-This will register all MediatR handlers, validators, and authorization components.
+This will register all MediatR handlers, validators, and authorization components. The `WithResourceResolvers()` call enables automatic resource resolution for resource-based authorization.
 
 ### 2. Create Authorized Requests
 
 For requests requiring authentication only:
+
+```csharp
+public record GetUserDataQuery : IAuthenticatedRequest<UserDataResponse>
+{
+    public string? UserId { get; init; }
+}
+```
+
+Alternatively, you can use `IAuthorizedRequest` with a null policy:
 
 ```csharp
 public record GetUserDataQuery : IAuthorizedRequest<UserDataResponse>
@@ -68,14 +78,70 @@ For operations on specific resources:
 ```csharp
 public record UpdateDocumentCommand : IAuthorizedResourceRequest<Document, Unit>
 {
-    public string DocumentId { get; init; }
+    public Guid DocumentId { get; init; }
     public string NewContent { get; init; }
     
-    // The resource being accessed
-    public Document Resource { get; init; }
+    // The resource being accessed - can be set manually or resolved automatically
+    public Document? Resource { get; set; }
     
     // The policy to check
     public string PolicyName => "documents.update";
+}
+```
+
+#### Automatic Resource Resolution
+
+You can implement resource resolvers to automatically load resources before authorization in two ways:
+
+**Option 1: Dedicated Resolver Classes**
+
+```csharp
+public class DocumentResourceResolver : IResourceResolver<UpdateDocumentCommand, Document>
+{
+    private readonly IDocumentRepository _repository;
+    
+    public DocumentResourceResolver(IDocumentRepository repository) => _repository = repository;
+    
+    public async Task<Document?> ResolveAsync(UpdateDocumentCommand request, CancellationToken cancellationToken)
+    {
+        return await _repository.GetByIdAsync(request.DocumentId);
+    }
+}
+
+// Register the resolver
+services.AddTransient<IResourceResolver<UpdateDocumentCommand, Document>, DocumentResourceResolver>();
+```
+
+**Option 2: Convention-Based Registration (Recommended for simple cases)**
+
+```csharp
+services.AddSliceR(typeof(YourStartupClass).Assembly)
+    .WithResourceResolver<UpdateDocumentCommand, Document>(async (request, serviceProvider, cancellationToken) =>
+    {
+        var repository = serviceProvider.GetRequiredService<IDocumentRepository>();
+        return await repository.GetByIdAsync(request.DocumentId);
+    })
+    .WithResourceResolver<DeleteUserCommand, User>(async (request, serviceProvider, cancellationToken) =>
+    {
+        var userService = serviceProvider.GetRequiredService<IUserService>();
+        return await userService.GetUserByIdAsync(request.UserId);
+    });
+```
+
+With automatic resource resolution, your controllers become much simpler:
+
+```csharp
+[HttpPut("/documents/{id}")]
+public async Task<IActionResult> UpdateDocument(Guid id, UpdateDocumentRequest request)
+{
+    var command = new UpdateDocumentCommand 
+    { 
+        DocumentId = id,
+        NewContent = request.Content
+        // Resource will be resolved automatically!
+    };
+    
+    return Ok(await _mediator.Send(command));
 }
 ```
 

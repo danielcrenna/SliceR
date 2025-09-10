@@ -7,26 +7,69 @@
 		
 		<!-- NuGet Package Information -->
 		<PackageId>SliceR</PackageId>
-		<Version>1.0.0</Version>
+		<Version>1.1.0</Version>
 		<Authors>Daniel Crenna</Authors>
 		<Product>SliceR</Product>
-		<Description>A lightweight library that integrates MediatR with FluentValidation and ASP.NET Core Authorization to enable clean, vertical "slicing" of application features.</Description>
+		<Description>A lightweight library that integrates MediatR with FluentValidation and ASP.NET Core Authorization to enable clean, vertical "slicing" of application features. Features automatic resource resolution, authentication-only interfaces, and streamlined controller patterns.</Description>
 		<PackageProjectUrl>https://github.com/danielcrenna/SliceR</PackageProjectUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/danielcrenna/SliceR</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
-		<PackageTags>mediatr;fluentvalidation;authorization;aspnetcore;vertical-slice;cqrs</PackageTags>
+		<PackageTags>mediatr;fluentvalidation;authorization;aspnetcore;vertical-slice;cqrs;resource-resolution;authentication</PackageTags>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
 		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Copyright>Copyright (c) 2025 Daniel Crenna</Copyright>
-		<PackageReleaseNotes>Initial release of SliceR library.</PackageReleaseNotes>
+		<PackageReleaseNotes>
+## SliceR 1.1.0 - Smart Resource Resolution Pipeline
+
+### 🚀 New Features
+
+**IAuthenticatedRequest Interface**
+- Added convenience interface for authentication-only requests (no specific authorization policy required)
+- Eliminates the need to set PolicyName = null for simple authentication scenarios
+
+**Smart Resource Resolution Pipeline**
+- IResourceResolver&lt;TRequest, TResource&gt; interface for automatic resource loading
+- Automatic resource resolution in AuthorizationBehavior before authorization checks
+- WithResourceResolver() extension method for convention-based resolver registration
+- DelegateResourceResolver for inline resolver logic with full dependency injection support
+
+### 💡 Usage Examples
+
+**IAuthenticatedRequest**
+```csharp
+public record GetUserDataQuery : IAuthenticatedRequest&lt;UserDataResponse&gt;
+{
+    public string? UserId { get; init; }
+}
+```
+
+**Convention-Based Resource Resolution**
+```csharp
+services.AddSliceR()
+    .WithResourceResolver&lt;UpdateDocumentCommand, Document&gt;(async (request, serviceProvider, ct) =&gt; {
+        var repository = serviceProvider.GetRequiredService&lt;IDocumentRepository&gt;();
+        return await repository.GetByIdAsync(request.DocumentId);
+    });
+```
+
+**Simplified Controllers (New)**
+```csharp
+[HttpPut("/documents/{id}")]
+public async Task&lt;IActionResult&gt; UpdateDocument(Guid id, UpdateDocumentRequest request)
+{
+    var command = new UpdateDocumentCommand { DocumentId = id, NewContent = request.Content };
+    return Ok(await _mediator.Send(command)); // Resource resolved automatically!
+}
+```
+		</PackageReleaseNotes>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="FluentValidation" Version="12.0.0" />
-		<PackageReference Include="MediatR" Version="12.5.0" />
+		<PackageReference Include="MediatR" Version="13.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>

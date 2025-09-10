@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SliceR.Authorization;
@@ -73,6 +73,21 @@ public static class ServiceCollectionExtensions
             o.Filters.Add<AuthorizationExceptionFilter>();
         });
 
+        return services;
+    }
+
+    public static IServiceCollection WithResourceResolvers(this IServiceCollection services)
+    {
+        return services;
+    }
+
+    public static IServiceCollection WithResourceResolver<TRequest, TResource>(
+        this IServiceCollection services,
+        Func<TRequest, IServiceProvider, CancellationToken, Task<TResource?>> resolver)
+    {
+        services.AddTransient<IResourceResolver<TRequest, TResource>>(serviceProvider =>
+            new DelegateResourceResolver<TRequest, TResource>(resolver, serviceProvider));
+        
         return services;
     }
 }
