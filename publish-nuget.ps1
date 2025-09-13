@@ -165,7 +165,15 @@ try {
     
     # Step 2: Build the solution
     Write-Info "Step 2: Building solution in Release mode..."
-    dotnet build --configuration Release --verbosity minimal
+
+    # Set ContinuousIntegrationBuild for deterministic builds in CI environments
+    $buildArgs = @("--configuration", "Release", "--verbosity", "minimal")
+    if ($env:CI -eq "true" -or $env:TF_BUILD -eq "true" -or $env:GITHUB_ACTIONS -eq "true") {
+        Write-Info "CI environment detected - enabling ContinuousIntegrationBuild"
+        $buildArgs += "-p:ContinuousIntegrationBuild=true"
+    }
+
+    dotnet build @buildArgs
     if ($LASTEXITCODE -ne 0) { throw "Build failed" }
     Write-Success "✓ Build completed"
     Write-Host ""
@@ -187,7 +195,13 @@ try {
     # Step 4: Create NuGet package
     Write-Info "Step 4: Creating NuGet package..."
     $projectPath = "src\SliceR\SliceR.csproj"
-    dotnet pack $projectPath --configuration Release --no-build --verbosity minimal
+
+    $packArgs = @($projectPath, "--configuration", "Release", "--no-build", "--verbosity", "minimal")
+    if ($env:CI -eq "true" -or $env:TF_BUILD -eq "true" -or $env:GITHUB_ACTIONS -eq "true") {
+        $packArgs += "-p:ContinuousIntegrationBuild=true"
+    }
+
+    dotnet pack @packArgs
     if ($LASTEXITCODE -ne 0) { throw "Pack failed" }
     Write-Success "✓ Package created"
     Write-Host ""

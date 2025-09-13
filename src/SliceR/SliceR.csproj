@@ -82,6 +82,10 @@ public record ArchiveDocumentCommand(Guid DocumentId) : IRequest&lt;Unit&gt;
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
 		<PackageReference Include="FluentValidation" Version="12.0.0" />
 		<PackageReference Include="MediatR" Version="13.0.0" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
 	</ItemGroup>
 
 	<ItemGroup>
