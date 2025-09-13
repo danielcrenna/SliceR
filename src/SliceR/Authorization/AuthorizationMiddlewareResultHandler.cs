@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,19 +32,16 @@ internal class AuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareRe
             };
 
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(problemDetails);
+            await context.Response.WriteAsJsonAsync(problemDetails).ConfigureAwait(false);
             return;
         }
-        
-        await CallInnerHandlerAsync(next, context, policy, authorizeResult);
+
+        await CallInnerHandlerAsync(next, context, policy, authorizeResult).ConfigureAwait(false);
     }
-    
+
     protected virtual Task CallInnerHandlerAsync(
         RequestDelegate next,
         HttpContext context,
         AuthorizationPolicy policy,
-        PolicyAuthorizationResult authorizeResult)
-    {
-        return _inner.HandleAsync(next, context, policy, authorizeResult);
-    }
+        PolicyAuthorizationResult authorizeResult) => _inner.HandleAsync(next, context, policy, authorizeResult);
 }

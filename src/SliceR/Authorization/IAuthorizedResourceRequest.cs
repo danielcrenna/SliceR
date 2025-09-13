@@ -1,4 +1,4 @@
-﻿namespace SliceR.Authorization;
+namespace SliceR.Authorization;
 
 public interface IAuthorizedResourceRequest<out TResponse> : IAuthorizedRequest<TResponse>;
 

@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using MediatR;
 
 namespace SliceR.Validation;
@@ -9,10 +9,10 @@ internal sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValid
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         if (!validators.Any())
-            return await next(cancellationToken);
+            return await next(cancellationToken).ConfigureAwait(false);
 
-        await ValidateAsync(request, cancellationToken);
-        return await next(cancellationToken);
+        await ValidateAsync(request, cancellationToken).ConfigureAwait(false);
+        return await next(cancellationToken).ConfigureAwait(false);
     }
 
     private async Task ValidateAsync(TRequest request, CancellationToken cancellationToken)
@@ -21,7 +21,7 @@ internal sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValid
 
         var results = await Task.WhenAll(
             validators.Select(v => v.ValidateAsync(context, cancellationToken))
-        );
+        ).ConfigureAwait(false);
 
         var failures = results
             .SelectMany(r => r.Errors)

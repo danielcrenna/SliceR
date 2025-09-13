@@ -4,10 +4,11 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		
 		<!-- NuGet Package Information -->
 		<PackageId>SliceR</PackageId>
-		<Version>1.1.0</Version>
+		<Version>1.2.0</Version>
 		<Authors>Daniel Crenna</Authors>
 		<Product>SliceR</Product>
 		<Description>A lightweight library that integrates MediatR with FluentValidation and ASP.NET Core Authorization to enable clean, vertical "slicing" of application features. Features automatic resource resolution, authentication-only interfaces, and streamlined controller patterns.</Description>
@@ -21,46 +22,36 @@
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Copyright>Copyright (c) 2025 Daniel Crenna</Copyright>
 		<PackageReleaseNotes>
-## SliceR 1.1.0 - Smart Resource Resolution Pipeline
+## SliceR 1.2.0 - Attribute-Based Authorization
 
-### 🚀 New Features
+### New Features
 
-**IAuthenticatedRequest Interface**
-- Added convenience interface for authentication-only requests (no specific authorization policy required)
-- Eliminates the need to set PolicyName = null for simple authentication scenarios
+**Attribute-Based Authorization**
+- [Authenticated] attribute for authentication-only scenarios
+- [Authorized] attribute for declarative authorization policies
+- [ResolveResource] attribute for automatic resource resolution
 
-**Smart Resource Resolution Pipeline**
-- IResourceResolver&lt;TRequest, TResource&gt; interface for automatic resource loading
-- Automatic resource resolution in AuthorizationBehavior before authorization checks
-- WithResourceResolver() extension method for convention-based resolver registration
-- DelegateResourceResolver for inline resolver logic with full dependency injection support
+### Usage
 
-### 💡 Usage Examples
-
-**IAuthenticatedRequest**
+**Authentication Only**
 ```csharp
-public record GetUserDataQuery : IAuthenticatedRequest&lt;UserDataResponse&gt;
-{
-    public string? UserId { get; init; }
-}
+[Authenticated]
+public record GetUserDataQuery(string UserId) : IRequest&lt;UserDto&gt;;
 ```
 
-**Convention-Based Resource Resolution**
+**Simple Authorization**
 ```csharp
-services.AddSliceR()
-    .WithResourceResolver&lt;UpdateDocumentCommand, Document&gt;(async (request, serviceProvider, ct) =&gt; {
-        var repository = serviceProvider.GetRequiredService&lt;IDocumentRepository&gt;();
-        return await repository.GetByIdAsync(request.DocumentId);
-    });
+[Authorized("users.create")]
+public record CreateUserCommand(string Username) : IRequest&lt;UserDto&gt;;
 ```
 
-**Simplified Controllers (New)**
+**With Resource Resolution**
 ```csharp
-[HttpPut("/documents/{id}")]
-public async Task&lt;IActionResult&gt; UpdateDocument(Guid id, UpdateDocumentRequest request)
+[Authorized("documents.update")]
+[ResolveResource(typeof(DocumentResourceResolver))]
+public record UpdateDocumentCommand(Guid DocumentId) : IRequest&lt;Unit&gt;
 {
-    var command = new UpdateDocumentCommand { DocumentId = id, NewContent = request.Content };
-    return Ok(await _mediator.Send(command)); // Resource resolved automatically!
+    public Document? Resource { get; set; }
 }
 ```
 		</PackageReleaseNotes>

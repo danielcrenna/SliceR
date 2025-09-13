@@ -8,6 +8,7 @@ SliceR is a lightweight library that integrates MediatR with FluentValidation an
 - **Automated Validation**: Integrates FluentValidation to validate commands and queries before they're handled
 - **Policy-Based Authorization**: Enforces authorization policies on requests
 - **Resource-Based Authorization**: Supports authorization against specific resources
+- **Attribute-Based Authorization**: Declarative authorization using attributes
 - **ASP.NET Core Integration**: Provides middleware and exception filters for web applications
 - **Minimal Configuration**: Set up with a single extension method
 
@@ -34,85 +35,94 @@ services.AddSliceR(typeof(YourStartupClass).Assembly)
     .WithResourceResolvers(); // Enable automatic resource resolution
 ```
 
-This will register all MediatR handlers, validators, and authorization components. The `WithResourceResolvers()` call enables automatic resource resolution for resource-based authorization.
+This will register all handlers, validators, and authorization components. The `WithResourceResolvers()` call enables automatic resource resolution for resource-based authorization.
 
 ### 2. Create Authorized Requests
 
-For requests requiring authentication only:
+#### Using Attributes
+
+The simplest way to add authorization is using attributes:
 
 ```csharp
+// Authentication only
+[Authenticated]
+public record GetUserDataQuery(string? UserId) : IRequest<UserDataResponse>;
+
+// Alternative: using [Authorized] without parameters
+[Authorized]
+public record GetProfileQuery(string? UserId) : IRequest<ProfileResponse>;
+
+// With specific policy
+[Authorized("users.delete")]
+public record DeleteUserCommand(string UserId) : IRequest<bool>;
+
+// With resource resolution
+[Authorized("documents.update")]
+[ResolveResource(typeof(DocumentResourceResolver))]
+public record UpdateDocumentCommand(Guid DocumentId, string NewContent) : IRequest<Unit>
+{
+    public Document? Resource { get; set; }
+}
+```
+
+#### Using Interfaces
+
+Alternatively, use interfaces for more control:
+
+```csharp
+// Authentication only
 public record GetUserDataQuery : IAuthenticatedRequest<UserDataResponse>
 {
     public string? UserId { get; init; }
 }
-```
 
-Alternatively, you can use `IAuthorizedRequest` with a null policy:
-
-```csharp
-public record GetUserDataQuery : IAuthorizedRequest<UserDataResponse>
-{
-    public string? UserId { get; init; }
-    
-    // No specific policy, just authentication
-    public string? PolicyName => null;
-}
-```
-
-For requests requiring specific authorization policies:
-
-```csharp
+// With specific policy
 public record DeleteUserCommand : IAuthorizedRequest<bool>
 {
     public string UserId { get; init; }
-    
-    // Require the "users.delete" policy
     public string PolicyName => "users.delete";
 }
 ```
 
 ### 3. Resource-Based Authorization
 
-For operations on specific resources:
+Resources can be resolved automatically before authorization:
+
+**With Attributes (v1.2.0+)**
 
 ```csharp
-public record UpdateDocumentCommand : IAuthorizedResourceRequest<Document, Unit>
+[Authorized("documents.update")]
+[ResolveResource(typeof(DocumentResourceResolver))]
+public record UpdateDocumentCommand(Guid DocumentId) : IRequest<Unit>
 {
-    public Guid DocumentId { get; init; }
-    public string NewContent { get; init; }
-    
-    // The resource being accessed - can be set manually or resolved automatically
     public Document? Resource { get; set; }
-    
-    // The policy to check
-    public string PolicyName => "documents.update";
 }
-```
 
-#### Automatic Resource Resolution
-
-You can implement resource resolvers to automatically load resources before authorization in two ways:
-
-**Option 1: Dedicated Resolver Classes**
-
-```csharp
 public class DocumentResourceResolver : IResourceResolver<UpdateDocumentCommand, Document>
 {
     private readonly IDocumentRepository _repository;
-    
+
     public DocumentResourceResolver(IDocumentRepository repository) => _repository = repository;
-    
+
     public async Task<Document?> ResolveAsync(UpdateDocumentCommand request, CancellationToken cancellationToken)
     {
         return await _repository.GetByIdAsync(request.DocumentId);
     }
 }
-
-// Register the resolver
-services.AddTransient<IResourceResolver<UpdateDocumentCommand, Document>, DocumentResourceResolver>();
 ```
 
-**Option 2: Convention-Based Registration (Recommended for simple cases)**
+**With Interfaces**
+
+```csharp
+public record UpdateDocumentCommand : IAuthorizedResourceRequest<Document, Unit>
+{
+    public Guid DocumentId { get; init; }
+    public Document? Resource { get; set; }
+    public string PolicyName => "documents.update";
+}
+```
+
+**Convention-Based Registration**
 
 ```csharp
 services.AddSliceR(typeof(YourStartupClass).Assembly)

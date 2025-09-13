@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -10,15 +10,15 @@ internal sealed class AuthorizationExceptionFilter : IExceptionFilter
     {
         if (context.Exception is not AuthorizationFailedException exception)
             return;
-            
-        var statusCode = exception.FailedRequirement == "Authentication" 
-            ? StatusCodes.Status401Unauthorized 
+
+        var statusCode = exception.FailedRequirement == "Authentication"
+            ? StatusCodes.Status401Unauthorized
             : StatusCodes.Status403Forbidden;
-            
-        var title = exception.FailedRequirement == "Authentication" 
-            ? "Authentication Failed" 
+
+        var title = exception.FailedRequirement == "Authentication"
+            ? "Authentication Failed"
             : "Authorization Failed";
-            
+
         var problemDetails = new ProblemDetails
         {
             Title = title,

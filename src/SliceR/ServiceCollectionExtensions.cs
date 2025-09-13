@@ -1,8 +1,8 @@
-﻿using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SliceR.Authorization;
 using SliceR.Validation;
@@ -16,17 +16,17 @@ public static class ServiceCollectionExtensions
         ServiceLifetime lifetime = ServiceLifetime.Scoped,
         bool includeInternalTypes = true)
     {
-	    assembly ??= Assembly.GetCallingAssembly();
+        assembly ??= Assembly.GetCallingAssembly();
 
-	    services.AddMediatR(c =>
-	    {
-		    c.AutoRegisterRequestProcessors = true;
-		    c.RegisterServicesFromAssembly(assembly);
-	    });
+        services.AddMediatR(c =>
+        {
+            c.AutoRegisterRequestProcessors = true;
+            c.RegisterServicesFromAssembly(assembly);
+        });
 
-	   return services
-                .AddValidationSlice(assembly, lifetime, includeInternalTypes)
-                .AddAuthorizationSlice();
+        return services
+                 .AddValidationSlice(assembly, lifetime, includeInternalTypes)
+                 .AddAuthorizationSlice();
     }
 
     private static IServiceCollection AddValidationSlice(this IServiceCollection services,
@@ -34,18 +34,18 @@ public static class ServiceCollectionExtensions
         ServiceLifetime lifetime = ServiceLifetime.Scoped,
         bool includeInternalTypes = true)
     {
-	    assembly ??= Assembly.GetEntryAssembly();
+        assembly ??= Assembly.GetEntryAssembly();
 
-	    //:: Fluent Validation
-	    AssemblyScanner
-		    .FindValidatorsInAssembly(assembly, includeInternalTypes)
-		    .ForEach(r =>
-		    {
-			    services.TryAddEnumerable(new ServiceDescriptor(r.InterfaceType, r.ValidatorType, lifetime));
-			    services.TryAdd(new ServiceDescriptor(r.ValidatorType, r.ValidatorType, lifetime));
-		    });
+        //:: Fluent Validation
+        AssemblyScanner
+            .FindValidatorsInAssembly(assembly, includeInternalTypes)
+            .ForEach(r =>
+            {
+                services.TryAddEnumerable(new ServiceDescriptor(r.InterfaceType, r.ValidatorType, lifetime));
+                services.TryAdd(new ServiceDescriptor(r.ValidatorType, r.ValidatorType, lifetime));
+            });
 
-	    //:: MediatR Bridge
+        //:: MediatR Bridge
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         //:: ASP.NET Core Controllers
@@ -67,8 +67,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthorizationProvider, AuthorizationProvider>();
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuthorizationBehavior<,>));
 
-		//:: ASP.NET Core Controllers
-		services.AddControllers(o =>
+        //:: ASP.NET Core Controllers
+        services.AddControllers(o =>
         {
             o.Filters.Add<AuthorizationExceptionFilter>();
         });
@@ -76,10 +76,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection WithResourceResolvers(this IServiceCollection services)
-    {
-        return services;
-    }
+    public static IServiceCollection WithResourceResolvers(this IServiceCollection services) => services;
 
     public static IServiceCollection WithResourceResolver<TRequest, TResource>(
         this IServiceCollection services,
@@ -87,7 +84,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddTransient<IResourceResolver<TRequest, TResource>>(serviceProvider =>
             new DelegateResourceResolver<TRequest, TResource>(resolver, serviceProvider));
-        
+
         return services;
     }
 }

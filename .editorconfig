@@ -23,7 +23,7 @@ dotnet_style_prefer_inferred_tuple_names = true:suggestion
 dotnet_style_prefer_inferred_anonymous_type_member_names = true:suggestion
 dotnet_style_prefer_compound_assignment = true:suggestion
 dotnet_style_prefer_simplified_interpolation = true:suggestion
-dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+dotnet_style_prefer_collection_expression = when_types_exactly_match:warning
 
 [*.cs]
 # Language features
@@ -51,7 +51,7 @@ csharp_style_prefer_local_over_anonymous_function = true:suggestion
 csharp_style_prefer_tuple_swap = true:suggestion
 
 # Collection expressions (C# 12)
-csharp_style_prefer_collection_expression = true:suggestion
+csharp_style_prefer_collection_expression = true:warning
 csharp_style_prefer_range_operator = true:suggestion
 csharp_style_prefer_index_operator = true:suggestion
 
@@ -241,6 +241,33 @@ dotnet_diagnostic.CS1591.severity = none
 # IDE0055: Fix formatting
 dotnet_diagnostic.IDE0055.severity = suggestion
 
+# IDE0005: Remove unnecessary using directives
+dotnet_diagnostic.IDE0005.severity = warning
+
+# IDE0022: Use expression body for method
+dotnet_diagnostic.IDE0022.severity = warning
+
+# IDE0028: Use collection initializers
+dotnet_diagnostic.IDE0028.severity = warning
+
+# IDE0300: Use collection expression for array
+dotnet_diagnostic.IDE0300.severity = warning
+
+# IDE0301: Use collection expression for empty
+dotnet_diagnostic.IDE0301.severity = warning
+
+# IDE0302: Use collection expression for stackalloc
+dotnet_diagnostic.IDE0302.severity = warning
+
+# IDE0303: Use collection expression for Create()
+dotnet_diagnostic.IDE0303.severity = warning
+
+# IDE0304: Use collection expression for builder
+dotnet_diagnostic.IDE0304.severity = warning
+
+# IDE0305: Use collection expression for fluent
+dotnet_diagnostic.IDE0305.severity = warning
+
 # StyleCop: File may only contain a single type
 dotnet_diagnostic.SA1402.severity = warning
 
@@ -256,6 +283,9 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# xUnit analyzer rules
+dotnet_diagnostic.xUnit1030.severity = warning  # Do not call ConfigureAwait in test method
 
 [*.{xml,csproj,props,targets}]
 indent_size = 2

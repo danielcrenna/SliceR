@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -16,7 +16,7 @@ internal sealed class ValidationExceptionFilter : IExceptionFilter
             .GroupBy(e => string.IsNullOrWhiteSpace(e.PropertyName) ? "permission_failures" : e.PropertyName)
             .ToDictionary(g => g.Key, g =>
                 g.Select(e => e.ErrorMessage).ToArray());
-        
+
         var problemDetails = new ValidationProblemDetails(errors)
         {
             Detail = exception.Message,
