@@ -26,7 +26,8 @@ public static class ServiceCollectionExtensions
 
         return services
                  .AddValidationSlice(assembly, lifetime, includeInternalTypes)
-                 .AddAuthorizationSlice();
+                 .AddAuthorizationSlice()
+                 .AddResourceResolvers(assembly, lifetime, includeInternalTypes);
     }
 
     private static IServiceCollection AddValidationSlice(this IServiceCollection services,
@@ -72,6 +73,36 @@ public static class ServiceCollectionExtensions
         {
             o.Filters.Add<AuthorizationExceptionFilter>();
         });
+
+        return services;
+    }
+
+    private static IServiceCollection AddResourceResolvers(this IServiceCollection services,
+        Assembly assembly,
+        ServiceLifetime lifetime,
+        bool includeInternalTypes)
+    {
+        var bindingFlags = BindingFlags.Public | (includeInternalTypes ? BindingFlags.NonPublic : 0);
+
+        var resolverTypes = assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && !t.IsGenericTypeDefinition)
+            .Where(t => t.GetInterfaces().Any(i =>
+                i.IsGenericType &&
+                i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>)))
+            .ToList();
+
+        foreach (var resolverType in resolverTypes)
+        {
+            var interfaces = resolverType.GetInterfaces()
+                .Where(i => i.IsGenericType &&
+                           i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>));
+
+            foreach (var @interface in interfaces)
+            {
+                services.TryAdd(new ServiceDescriptor(@interface, resolverType, lifetime));
+                services.TryAdd(new ServiceDescriptor(resolverType, resolverType, lifetime));
+            }
+        }
 
         return services;
     }

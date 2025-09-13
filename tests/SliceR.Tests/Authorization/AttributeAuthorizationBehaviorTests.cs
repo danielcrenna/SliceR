@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Claims;
 using FakeItEasy;
 using MediatR;
@@ -28,6 +29,30 @@ public sealed class AttributeAuthorizationBehaviorTests
         public TestResource? Resource { get; set; }
     }
 
+    [Authorized("convention-policy")]
+    [ResolveResource]
+    internal sealed record TestConventionBasedRequest : IRequest<string>
+    {
+        public Guid ResourceId { get; init; }
+        public TestResource? Resource { get; set; }
+    }
+
+    [Authorized("no-resolver-policy")]
+    [ResolveResource]
+    internal sealed record TestConventionBasedNoResolverRequest : IRequest<string>
+    {
+        public Guid ResourceId { get; init; }
+        public TestResource? Resource { get; set; }
+    }
+
+    [Authorized("override-policy")]
+    [ResolveResource(typeof(TestExplicitResourceResolver))]
+    internal sealed record TestExplicitOverrideRequest : IRequest<string>
+    {
+        public Guid ResourceId { get; init; }
+        public TestResource? Resource { get; set; }
+    }
+
     internal sealed record TestNoAuthorizationRequest : IRequest<string>;
 
     internal sealed record TestInterfaceBasedRequest : IAuthorizedRequest<string>
@@ -50,6 +75,21 @@ public sealed class AttributeAuthorizationBehaviorTests
     internal sealed class TestResourceResolver : IResourceResolver<TestAuthorizeWithResourceRequest, TestResource>
     {
         public Task<TestResource?> ResolveAsync(TestAuthorizeWithResourceRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Test Resource" });
+    }
+
+    internal sealed class TestConventionBasedRequestResolver : IResourceResolver<TestConventionBasedRequest, TestResource>
+    {
+        public Task<TestResource?> ResolveAsync(TestConventionBasedRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Convention Resource" });
+    }
+
+    internal sealed class TestExplicitResourceResolver : IResourceResolver<TestExplicitOverrideRequest, TestResource>
+    {
+        public Task<TestResource?> ResolveAsync(TestExplicitOverrideRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Explicit Resource" });
+    }
+
+    internal sealed class TestExplicitOverrideRequestResolver : IResourceResolver<TestExplicitOverrideRequest, TestResource>
+    {
+        public Task<TestResource?> ResolveAsync(TestExplicitOverrideRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Convention Override Resource" });
     }
 
     internal sealed class InvalidResolver;
@@ -331,6 +371,107 @@ public sealed class AttributeAuthorizationBehaviorTests
             () => new AuthorizedAttribute(""));
 
         Assert.Contains("Policy name cannot be an empty string", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Handle_WithConventionBasedResolver_ResolvesResourceSuccessfully()
+    {
+        // Arrange
+        var authProvider = A.Fake<IAuthorizationProvider>();
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "convention-policy", A<TestResource>._))
+            .Returns(_successResult);
+
+        var httpContextAccessor = CreateAuthenticatedContextAccessor();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IResourceResolver<TestConventionBasedRequest, TestResource>, TestConventionBasedRequestResolver>();
+        var serviceProvider = services.BuildServiceProvider();
+
+        var behavior = new AuthorizationBehavior<TestConventionBasedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var request = new TestConventionBasedRequest { ResourceId = Guid.NewGuid() };
+
+        // Act
+        var result = await behavior.Handle(request, _nextMock, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("Success", result);
+        Assert.NotNull(request.Resource);
+        Assert.Equal(request.ResourceId, request.Resource.Id);
+        Assert.Equal("Convention Resource", request.Resource.Name);
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "convention-policy", A<TestResource>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task Handle_WithConventionBasedResolver_NoResolverExists_ProceedsGracefully()
+    {
+        // Arrange
+        var authProvider = A.Fake<IAuthorizationProvider>();
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "no-resolver-policy", null))
+            .Returns(_successResult);
+
+        var httpContextAccessor = CreateAuthenticatedContextAccessor();
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
+        var behavior = new AuthorizationBehavior<TestConventionBasedNoResolverRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var request = new TestConventionBasedNoResolverRequest { ResourceId = Guid.NewGuid() };
+
+        // Act
+        var result = await behavior.Handle(request, _nextMock, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("Success", result);
+        Assert.Null(request.Resource);
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "no-resolver-policy", null))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public async Task Handle_WithExplicitResolver_OverridesConvention()
+    {
+        // Arrange
+        var authProvider = A.Fake<IAuthorizationProvider>();
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "override-policy", A<TestResource>._))
+            .Returns(_successResult);
+
+        var httpContextAccessor = CreateAuthenticatedContextAccessor();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<TestExplicitResourceResolver>();
+        services.AddSingleton<IResourceResolver<TestExplicitOverrideRequest, TestResource>, TestExplicitOverrideRequestResolver>();
+        var serviceProvider = services.BuildServiceProvider();
+
+        var behavior = new AuthorizationBehavior<TestExplicitOverrideRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var request = new TestExplicitOverrideRequest { ResourceId = Guid.NewGuid() };
+
+        // Act
+        var result = await behavior.Handle(request, _nextMock, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("Success", result);
+        Assert.NotNull(request.Resource);
+        Assert.Equal(request.ResourceId, request.Resource.Id);
+        Assert.Equal("Explicit Resource", request.Resource.Name);
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "override-policy", A<TestResource>._))
+            .MustHaveHappenedOnceExactly();
+    }
+
+    [Fact]
+    public void ServiceCollectionExtensions_AddSliceR_RegistersConventionBasedResolvers()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddSliceR(Assembly.GetExecutingAssembly(), includeInternalTypes: true);
+        var serviceProvider = services.BuildServiceProvider();
+
+        var conventionResolver = serviceProvider.GetService<IResourceResolver<TestConventionBasedRequest, TestResource>>();
+        Assert.NotNull(conventionResolver);
+        Assert.IsType<TestConventionBasedRequestResolver>(conventionResolver);
+
+        var explicitOverrideResolver = serviceProvider.GetService<IResourceResolver<TestExplicitOverrideRequest, TestResource>>();
+        Assert.NotNull(explicitOverrideResolver);
     }
 
     private static IHttpContextAccessor CreateAuthenticatedContextAccessor()

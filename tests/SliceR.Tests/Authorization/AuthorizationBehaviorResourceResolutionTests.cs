@@ -11,16 +11,6 @@ public class AuthorizationBehaviorResourceResolutionTests
 {
     public record TestDocument(Guid Id, string Content);
 
-    public record RequestWithoutResourceInterface : IAuthorizedRequest<Unit>
-    {
-        public string PolicyName => "test.policy";
-    }
-
-    public record RequestWithMalformedResourceInterface : IAuthorizedRequest<Unit>
-    {
-        public string PolicyName => "test.policy";
-    }
-
     public record RequestWithResourceButNoGenericInterface : IAuthorizedResourceRequest<Unit>
     {
         public string PolicyName => "test.policy";

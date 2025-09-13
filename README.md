@@ -12,6 +12,15 @@ SliceR is a lightweight library that integrates MediatR with FluentValidation an
 - **ASP.NET Core Integration**: Provides middleware and exception filters for web applications
 - **Minimal Configuration**: Set up with a single extension method
 
+## Benefits of the Vertical Slice Architecture
+
+Using SliceR helps implement a vertical slice architecture where:
+
+- Each feature is isolated with its own request, handler, validator, and authorization rules
+- Cross-cutting concerns like validation and authorization are handled consistently
+- Code organization follows feature boundaries rather than technical layers
+- Features can be understood, tested, and maintained in isolation
+
 ## Installation
 
 Add a reference to the SliceR project in your solution:
@@ -56,10 +65,18 @@ public record GetProfileQuery(string? UserId) : IRequest<ProfileResponse>;
 [Authorized("users.delete")]
 public record DeleteUserCommand(string UserId) : IRequest<bool>;
 
-// With resource resolution
+// With explicit resource resolver
 [Authorized("documents.update")]
 [ResolveResource(typeof(DocumentResourceResolver))]
 public record UpdateDocumentCommand(Guid DocumentId, string NewContent) : IRequest<Unit>
+{
+    public Document? Resource { get; set; }
+}
+
+// With convention-based resolver
+[Authorized("documents.delete")]
+[ResolveResource]  // Automatically finds DeleteDocumentCommandResolver
+public record DeleteDocumentCommand(Guid DocumentId) : IRequest<Unit>
 {
     public Document? Resource { get; set; }
 }
@@ -88,26 +105,39 @@ public record DeleteUserCommand : IAuthorizedRequest<bool>
 
 Resources can be resolved automatically before authorization:
 
-**With Attributes (v1.2.0+)**
+**Convention-Based Resolvers**
 
 ```csharp
+// Command with convention-based resolver
 [Authorized("documents.update")]
-[ResolveResource(typeof(DocumentResourceResolver))]
+[ResolveResource]  // No type needed - finds UpdateDocumentCommandResolver automatically
 public record UpdateDocumentCommand(Guid DocumentId) : IRequest<Unit>
 {
     public Document? Resource { get; set; }
 }
 
-public class DocumentResourceResolver : IResourceResolver<UpdateDocumentCommand, Document>
+// Resolver follows naming convention: {RequestName}Resolver
+public class UpdateDocumentCommandResolver : IResourceResolver<UpdateDocumentCommand, Document>
 {
     private readonly IDocumentRepository _repository;
 
-    public DocumentResourceResolver(IDocumentRepository repository) => _repository = repository;
+    public UpdateDocumentCommandResolver(IDocumentRepository repository) => _repository = repository;
 
     public async Task<Document?> ResolveAsync(UpdateDocumentCommand request, CancellationToken cancellationToken)
     {
         return await _repository.GetByIdAsync(request.DocumentId);
     }
+}
+```
+
+**Explicit Resolver (Override Convention)**
+
+```csharp
+[Authorized("documents.archive")]
+[ResolveResource(typeof(CustomDocumentResolver))]  // Explicitly specify resolver
+public record ArchiveDocumentCommand(Guid DocumentId) : IRequest<Unit>
+{
+    public Document? Resource { get; set; }
 }
 ```
 
@@ -122,7 +152,7 @@ public record UpdateDocumentCommand : IAuthorizedResourceRequest<Document, Unit>
 }
 ```
 
-**Convention-Based Registration**
+**Inline Resolver Registration**
 
 ```csharp
 services.AddSliceR(typeof(YourStartupClass).Assembly)
@@ -295,12 +325,3 @@ services.AddSliceR(
     includeInternalTypes: true
 );
 ```
-
-## Benefits of the Vertical Slice Architecture
-
-Using SliceR helps implement a vertical slice architecture where:
-
-- Each feature is isolated with its own request, handler, validator, and authorization rules
-- Cross-cutting concerns like validation and authorization are handled consistently
-- Code organization follows feature boundaries rather than technical layers
-- Features can be understood, tested, and maintained in isolation

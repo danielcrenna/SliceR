@@ -3,7 +3,12 @@ namespace SliceR.Authorization;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class ResolveResourceAttribute : Attribute
 {
-    public Type ResolverType { get; }
+    public Type? ResolverType { get; }
+
+    public ResolveResourceAttribute()
+    {
+        ResolverType = null;
+    }
 
     public ResolveResourceAttribute(Type resolverType)
     {

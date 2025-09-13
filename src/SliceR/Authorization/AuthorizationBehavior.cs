@@ -164,44 +164,87 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse>(
         CancellationToken cancellationToken)
     {
         var requestType = typeof(TRequest);
-        var resolverType = resolveResourceAttribute.ResolverType;
 
-        var resolverInterface = resolverType.GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType &&
-                                i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>) &&
-                                i.GetGenericArguments()[0] == requestType);
-
-        if (resolverInterface == null)
+        if (resolveResourceAttribute.ResolverType != null)
         {
-            throw new InvalidOperationException($"Resolver type {resolverType.Name} does not implement IResourceResolver<{requestType.Name}, TResource>");
-        }
+            var resolverType = resolveResourceAttribute.ResolverType;
+            var resolverInterface = resolverType.GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType &&
+                                    i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>) &&
+                                    i.GetGenericArguments()[0] == requestType);
 
-        var resourceType = resolverInterface.GetGenericArguments()[1];
-        var resolver = serviceProvider.GetService(resolverType);
-
-        if (resolver == null)
-        {
-            throw new InvalidOperationException($"Resource resolver of type {resolverType.Name} is not registered in the service provider");
-        }
-
-        var resolveMethod = resolverInterface.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
-        var task = (Task)resolveMethod!.Invoke(resolver, [request, cancellationToken])!;
-        await task.ConfigureAwait(false);
-
-        var resultProperty = task.GetType().GetProperty("Result");
-        var resolvedResource = resultProperty!.GetValue(task);
-
-        if (resolvedResource != null)
-        {
-            var resourceProperty = requestType.GetProperty("Resource");
-            if (resourceProperty != null && resourceProperty.CanWrite &&
-                resourceProperty.PropertyType.IsAssignableFrom(resourceType))
+            if (resolverInterface == null)
             {
-                resourceProperty.SetValue(request, resolvedResource);
+                throw new InvalidOperationException($"Resolver type {resolverType.Name} does not implement IResourceResolver<{requestType.Name}, TResource>");
+            }
+
+            var explicitResourceType = resolverInterface.GetGenericArguments()[1];
+            var explicitResolver = serviceProvider.GetService(resolverType);
+
+            if (explicitResolver == null)
+            {
+                throw new InvalidOperationException($"Resource resolver of type {resolverType.Name} is not registered in the service provider");
+            }
+
+            var explicitResolveMethod = resolverInterface.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
+            var explicitTask = (Task)explicitResolveMethod!.Invoke(explicitResolver, [request, cancellationToken])!;
+            await explicitTask.ConfigureAwait(false);
+
+            var explicitResultProperty = explicitTask.GetType().GetProperty("Result");
+            var explicitResolvedResource = explicitResultProperty!.GetValue(explicitTask);
+
+            if (explicitResolvedResource != null)
+            {
+                var explicitResourceProperty = requestType.GetProperty("Resource");
+                if (explicitResourceProperty != null && explicitResourceProperty.CanWrite &&
+                    explicitResourceProperty.PropertyType.IsAssignableFrom(explicitResourceType))
+                {
+                    explicitResourceProperty.SetValue(request, explicitResolvedResource);
+                }
+            }
+
+            return explicitResolvedResource;
+        }
+
+        var resourceProperty = requestType.GetProperty("Resource");
+        if (resourceProperty == null)
+        {
+            return null;
+        }
+
+        var conventionResourceType = resourceProperty.PropertyType;
+
+        if (conventionResourceType.IsGenericType && conventionResourceType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        {
+            conventionResourceType = Nullable.GetUnderlyingType(conventionResourceType)!;
+        }
+
+        var resolverInterfaceType = typeof(IResourceResolver<,>).MakeGenericType(requestType, conventionResourceType);
+
+        var conventionResolver = serviceProvider.GetService(resolverInterfaceType);
+
+        if (conventionResolver == null)
+        {
+            return null;
+        }
+
+        var conventionResolveMethod = resolverInterfaceType.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
+        var conventionTask = (Task)conventionResolveMethod!.Invoke(conventionResolver, [request, cancellationToken])!;
+        await conventionTask.ConfigureAwait(false);
+
+        var conventionResultProperty = conventionTask.GetType().GetProperty("Result");
+        var conventionResolvedResource = conventionResultProperty!.GetValue(conventionTask);
+
+        if (conventionResolvedResource != null)
+        {
+            if (resourceProperty.CanWrite &&
+                resourceProperty.PropertyType.IsAssignableFrom(conventionResourceType))
+            {
+                resourceProperty.SetValue(request, conventionResolvedResource);
             }
         }
 
-        return resolvedResource;
+        return conventionResolvedResource;
     }
 
     private static Type? GetResourceType(Type requestType)

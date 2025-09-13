@@ -22,7 +22,7 @@
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Copyright>Copyright (c) 2025 Daniel Crenna</Copyright>
 		<PackageReleaseNotes>
-## SliceR 1.2.0 - Attribute-Based Authorization
+## SliceR 1.2.0 - Attribute-Based Authorization &amp; Convention-Based Resolvers
 
 ### New Features
 
@@ -30,6 +30,11 @@
 - [Authenticated] attribute for authentication-only scenarios
 - [Authorized] attribute for declarative authorization policies
 - [ResolveResource] attribute for automatic resource resolution
+
+**Convention-Based Resource Resolvers**
+- Use [ResolveResource] without type parameter
+- Automatically discovers resolvers by naming convention
+- Explicit type parameter overrides convention
 
 ### Usage
 
@@ -45,11 +50,27 @@ public record GetUserDataQuery(string UserId) : IRequest&lt;UserDto&gt;;
 public record CreateUserCommand(string Username) : IRequest&lt;UserDto&gt;;
 ```
 
-**With Resource Resolution**
+**Convention-Based Resource Resolution**
 ```csharp
 [Authorized("documents.update")]
-[ResolveResource(typeof(DocumentResourceResolver))]
+[ResolveResource]  // Finds UpdateDocumentCommandResolver automatically
 public record UpdateDocumentCommand(Guid DocumentId) : IRequest&lt;Unit&gt;
+{
+    public Document? Resource { get; set; }
+}
+
+// Resolver follows naming convention
+public class UpdateDocumentCommandResolver : IResourceResolver&lt;UpdateDocumentCommand, Document&gt;
+{
+    // Implementation
+}
+```
+
+**Explicit Resource Resolution (Override Convention)**
+```csharp
+[Authorized("documents.archive")]
+[ResolveResource(typeof(CustomResolver))]  // Explicitly specify resolver
+public record ArchiveDocumentCommand(Guid DocumentId) : IRequest&lt;Unit&gt;
 {
     public Document? Resource { get; set; }
 }
