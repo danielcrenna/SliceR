@@ -9,7 +9,8 @@ namespace SliceR.Authorization;
 internal sealed class AuthorizationBehavior<TRequest, TResponse>(
     IAuthorizationProvider provider,
     IHttpContextAccessor accessor,
-    IServiceProvider serviceProvider)
+    IServiceProvider serviceProvider,
+    IResolverRegistry resolverRegistry)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -167,26 +168,26 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse>(
 
         if (resolveResourceAttribute.ResolverType != null)
         {
-            var resolverType = resolveResourceAttribute.ResolverType;
-            var resolverInterface = resolverType.GetInterfaces()
+            var explicitResolverType = resolveResourceAttribute.ResolverType;
+            var explicitResolverInterface = explicitResolverType.GetInterfaces()
                 .FirstOrDefault(i => i.IsGenericType &&
                                     i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>) &&
                                     i.GetGenericArguments()[0] == requestType);
 
-            if (resolverInterface == null)
+            if (explicitResolverInterface == null)
             {
-                throw new InvalidOperationException($"Resolver type {resolverType.Name} does not implement IResourceResolver<{requestType.Name}, TResource>");
+                throw new InvalidOperationException($"Resolver type {explicitResolverType.Name} does not implement IResourceResolver<{requestType.Name}, TResource>");
             }
 
-            var explicitResourceType = resolverInterface.GetGenericArguments()[1];
-            var explicitResolver = serviceProvider.GetService(resolverType);
+            var explicitResourceType = explicitResolverInterface.GetGenericArguments()[1];
+            var explicitResolver = serviceProvider.GetService(explicitResolverType);
 
             if (explicitResolver == null)
             {
-                throw new InvalidOperationException($"Resource resolver of type {resolverType.Name} is not registered in the service provider");
+                throw new InvalidOperationException($"Resource resolver of type {explicitResolverType.Name} is not registered in the service provider");
             }
 
-            var explicitResolveMethod = resolverInterface.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
+            var explicitResolveMethod = explicitResolverInterface.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
             var explicitTask = (Task)explicitResolveMethod!.Invoke(explicitResolver, [request, cancellationToken])!;
             await explicitTask.ConfigureAwait(false);
 
@@ -206,38 +207,47 @@ internal sealed class AuthorizationBehavior<TRequest, TResponse>(
             return explicitResolvedResource;
         }
 
-        var resourceProperty = requestType.GetProperty("Resource");
-        if (resourceProperty == null)
+        // Use the resolver registry to find the resolver type for this request
+        var mappings = resolverRegistry.GetMappings();
+        if (!mappings.TryGetValue(requestType, out var resolverType))
         {
             return null;
         }
 
-        var conventionResourceType = resourceProperty.PropertyType;
+        // Find the IResourceResolver<TRequest, TResource> interface implemented by the resolver
+        var resolverInterface = resolverType.GetInterfaces()
+            .FirstOrDefault(i => i.IsGenericType &&
+                                i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>) &&
+                                i.GetGenericArguments()[0] == requestType);
 
-        if (conventionResourceType.IsGenericType && conventionResourceType.GetGenericTypeDefinition() == typeof(Nullable<>))
+        if (resolverInterface == null)
         {
-            conventionResourceType = Nullable.GetUnderlyingType(conventionResourceType)!;
+            return null;
         }
 
-        var resolverInterfaceType = typeof(IResourceResolver<,>).MakeGenericType(requestType, conventionResourceType);
+        // Extract the resource type from the interface
+        var conventionResourceType = resolverInterface.GetGenericArguments()[1];
 
-        var conventionResolver = serviceProvider.GetService(resolverInterfaceType);
-
+        // Get the resolver from the service provider
+        var conventionResolver = serviceProvider.GetService(resolverInterface);
         if (conventionResolver == null)
         {
             return null;
         }
 
-        var conventionResolveMethod = resolverInterfaceType.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
+        // Invoke the ResolveAsync method
+        var conventionResolveMethod = resolverInterface.GetMethod(nameof(IResourceResolver<object, object>.ResolveAsync));
         var conventionTask = (Task)conventionResolveMethod!.Invoke(conventionResolver, [request, cancellationToken])!;
         await conventionTask.ConfigureAwait(false);
 
         var conventionResultProperty = conventionTask.GetType().GetProperty("Result");
         var conventionResolvedResource = conventionResultProperty!.GetValue(conventionTask);
 
+        // Try to set the Resource property if it exists and is writable
         if (conventionResolvedResource != null)
         {
-            if (resourceProperty.CanWrite &&
+            var resourceProperty = requestType.GetProperty("Resource");
+            if (resourceProperty != null && resourceProperty.CanWrite &&
                 resourceProperty.PropertyType.IsAssignableFrom(conventionResourceType))
             {
                 resourceProperty.SetValue(request, conventionResolvedResource);

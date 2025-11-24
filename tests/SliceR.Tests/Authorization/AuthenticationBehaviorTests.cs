@@ -15,6 +15,9 @@ public class AuthenticatedRequestTests
 
     private readonly RequestHandlerDelegate<string> _nextMock = _ => Task.FromResult("Success");
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     [Fact]
     public void IAuthenticatedRequest_PolicyName_ReturnsNull()
     {
@@ -34,7 +37,7 @@ public class AuthenticatedRequestTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(null);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthenticatedRequest();
 
         // Act & Assert
@@ -58,7 +61,7 @@ public class AuthenticatedRequestTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthenticatedRequest();
 
         // Act & Assert
@@ -82,7 +85,7 @@ public class AuthenticatedRequestTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthenticatedRequest();
 
         // Act
@@ -109,7 +112,7 @@ public class AuthenticatedRequestTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthenticatedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthenticatedRequest();
 
         // Act

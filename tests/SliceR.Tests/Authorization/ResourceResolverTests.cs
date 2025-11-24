@@ -39,6 +39,9 @@ public class ResourceResolverTests
     private readonly RequestHandlerDelegate<Unit> _nextMock = _ => Task.FromResult(Unit.Value);
     private readonly AuthorizationResult _successResult = AuthorizationResult.Success();
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     [Fact]
     public async Task Handle_WithResourceRequestAndNoExistingResource_ResolvesResource()
     {
@@ -59,7 +62,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
         // Act
@@ -93,7 +96,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentWithResourceCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentWithResourceCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
         var originalResource = request.Resource;
 
@@ -126,7 +129,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
         // Act
@@ -163,7 +166,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
         // Act
@@ -205,7 +208,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
         // Act
@@ -242,7 +245,7 @@ public class ResourceResolverTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
         var cancellationToken = CancellationToken.None;
 

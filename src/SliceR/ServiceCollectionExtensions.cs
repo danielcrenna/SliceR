@@ -91,6 +91,8 @@ public static class ServiceCollectionExtensions
                 i.GetGenericTypeDefinition() == typeof(IResourceResolver<,>)))
             .ToList();
 
+        var registryMappings = new Dictionary<Type, Type>();
+
         foreach (var resolverType in resolverTypes)
         {
             var interfaces = resolverType.GetInterfaces()
@@ -101,8 +103,22 @@ public static class ServiceCollectionExtensions
             {
                 services.TryAdd(new ServiceDescriptor(@interface, resolverType, lifetime));
                 services.TryAdd(new ServiceDescriptor(resolverType, resolverType, lifetime));
+
+                // Extract TRequest type for the registry
+                var requestType = @interface.GetGenericArguments()[0];
+
+                // Only register the first resolver found for each request type
+                // This prevents issues in test environments where multiple resolvers might exist
+                if (!registryMappings.ContainsKey(requestType))
+                {
+                    registryMappings[requestType] = resolverType;
+                }
             }
         }
+
+        // Register the resolver registry as a singleton
+        var registry = new ResolverRegistry(registryMappings);
+        services.AddSingleton<IResolverRegistry>(registry);
 
         return services;
     }

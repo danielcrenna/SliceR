@@ -26,6 +26,9 @@ public class AuthorizationBehaviorResourceResolutionTests
     private readonly RequestHandlerDelegate<Unit> _nextMock = _ => Task.FromResult(Unit.Value);
     private readonly AuthorizationResult _successResult = AuthorizationResult.Success();
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     [Fact]
     public async Task Handle_WithResourceRequestButNoResourceType_ReturnsNullResource()
     {
@@ -45,7 +48,7 @@ public class AuthorizationBehaviorResourceResolutionTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<RequestWithResourceButNoGenericInterface, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new RequestWithResourceButNoGenericInterface();
 
         // Act
@@ -75,7 +78,7 @@ public class AuthorizationBehaviorResourceResolutionTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest();
 
         // Act
@@ -112,7 +115,7 @@ public class AuthorizationBehaviorResourceResolutionTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest();
 
         // Act
@@ -147,7 +150,7 @@ public class AuthorizationBehaviorResourceResolutionTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest { Resource = existingDocument };
 
         // Act
@@ -185,7 +188,7 @@ public class AuthorizationBehaviorResourceResolutionTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest();
 
         // Act

@@ -26,6 +26,9 @@ public class AuthorizationBehaviorReflectionEdgeCasesTests
     private readonly RequestHandlerDelegate<Unit> _nextMock = _ => Task.FromResult(Unit.Value);
     private readonly AuthorizationResult _successResult = AuthorizationResult.Success();
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     [Fact]
     public async Task Handle_WithResolverThatThrowsException_PropagatesException()
     {
@@ -43,7 +46,7 @@ public class AuthorizationBehaviorReflectionEdgeCasesTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest();
 
         // Act & Assert
@@ -78,7 +81,7 @@ public class AuthorizationBehaviorReflectionEdgeCasesTests
         var serviceProvider = services.BuildServiceProvider();
 
         var behavior = new AuthorizationBehavior<ValidResourceRequest, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new ValidResourceRequest();
         var cancellationToken = CancellationToken.None;
 

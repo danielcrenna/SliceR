@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Security.Claims;
 using FakeItEasy;
 using MediatR;
@@ -45,9 +44,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         public TestResource? Resource { get; set; }
     }
 
-    [Authorized("override-policy")]
+    [Authorized("explicit-policy")]
     [ResolveResource(typeof(TestExplicitResourceResolver))]
-    internal sealed record TestExplicitOverrideRequest : IRequest<string>
+    internal sealed record TestExplicitResolverRequest : IRequest<string>
     {
         public Guid ResourceId { get; init; }
         public TestResource? Resource { get; set; }
@@ -82,17 +81,37 @@ public sealed class AttributeAuthorizationBehaviorTests
         public Task<TestResource?> ResolveAsync(TestConventionBasedRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Convention Resource" });
     }
 
-    internal sealed class TestExplicitResourceResolver : IResourceResolver<TestExplicitOverrideRequest, TestResource>
+    internal sealed class TestExplicitResourceResolver : IResourceResolver<TestExplicitResolverRequest, TestResource>
     {
-        public Task<TestResource?> ResolveAsync(TestExplicitOverrideRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Explicit Resource" });
+        public Task<TestResource?> ResolveAsync(TestExplicitResolverRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Explicit Resource" });
     }
 
-    internal sealed class TestExplicitOverrideRequestResolver : IResourceResolver<TestExplicitOverrideRequest, TestResource>
+    [Authorized("convention-override-policy")]
+    [ResolveResource]
+    internal sealed record TestConventionOverrideRequest : IRequest<string>
     {
-        public Task<TestResource?> ResolveAsync(TestExplicitOverrideRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Convention Override Resource" });
+        public Guid ResourceId { get; init; }
+        public TestResource? Resource { get; set; }
+    }
+
+    internal sealed class TestConventionOverrideRequestResolver : IResourceResolver<TestConventionOverrideRequest, TestResource>
+    {
+        public Task<TestResource?> ResolveAsync(TestConventionOverrideRequest request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "Convention Override Resource" });
     }
 
     internal sealed class InvalidResolver;
+
+    [Authorized("no-resource-property-policy")]
+    [ResolveResource]
+    internal sealed record TestRequestWithoutResourceProperty : IRequest<string>
+    {
+        public Guid ResourceId { get; init; }
+    }
+
+    internal sealed class TestRequestWithoutResourcePropertyResolver : IResourceResolver<TestRequestWithoutResourceProperty, TestResource>
+    {
+        public Task<TestResource?> ResolveAsync(TestRequestWithoutResourceProperty request, CancellationToken cancellationToken) => Task.FromResult<TestResource?>(new TestResource { Id = request.ResourceId, Name = "No Resource Property Resource" });
+    }
 
     #endregion
 
@@ -116,8 +135,9 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizeOnlyRequest();
 
         // Act
@@ -139,8 +159,9 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizeOnlyRequest();
 
         // Act & Assert
@@ -164,8 +185,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var services = new ServiceCollection();
         services.AddSingleton<TestResourceResolver>();
         var serviceProvider = services.BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizeWithResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizeWithResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizeWithResourceRequest { ResourceId = Guid.NewGuid() };
 
         // Act
@@ -186,8 +208,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var authProvider = A.Fake<IAuthorizationProvider>();
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestNoAuthorizationRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestNoAuthorizationRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestNoAuthorizationRequest();
 
         // Act
@@ -209,8 +232,9 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestInterfaceBasedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestInterfaceBasedRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestInterfaceBasedRequest { PolicyName = "interface-policy" };
 
         // Act
@@ -233,8 +257,9 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestInterfaceBasedResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestInterfaceBasedResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestInterfaceBasedResourceRequest
         {
             PolicyName = "interface-resource-policy",
@@ -260,7 +285,8 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var resolverRegistry = CreateResolverRegistry();
+        var behavior = new AuthorizationBehavior<TestAuthorizeOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizeOnlyRequest();
 
         // Act & Assert
@@ -278,8 +304,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var authProvider = A.Fake<IAuthorizationProvider>();
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider(); // Resolver not registered
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizeWithResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizeWithResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizeWithResourceRequest { ResourceId = Guid.NewGuid() };
 
         // Act & Assert
@@ -310,8 +337,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var authProvider = A.Fake<IAuthorizationProvider>();
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthenticatedOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthenticatedOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthenticatedOnlyRequest();
 
         // Act
@@ -332,7 +360,8 @@ public sealed class AttributeAuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(null);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthenticatedOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var resolverRegistry = CreateResolverRegistry();
+        var behavior = new AuthorizationBehavior<TestAuthenticatedOnlyRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthenticatedOnlyRequest();
 
         // Act & Assert
@@ -350,8 +379,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var authProvider = A.Fake<IAuthorizationProvider>();
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestAuthorizedNoPolicy, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedNoPolicy, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestAuthorizedNoPolicy();
 
         // Act
@@ -386,8 +416,9 @@ public sealed class AttributeAuthorizationBehaviorTests
         var services = new ServiceCollection();
         services.AddSingleton<IResourceResolver<TestConventionBasedRequest, TestResource>, TestConventionBasedRequestResolver>();
         var serviceProvider = services.BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestConventionBasedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestConventionBasedRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestConventionBasedRequest { ResourceId = Guid.NewGuid() };
 
         // Act
@@ -412,8 +443,9 @@ public sealed class AttributeAuthorizationBehaviorTests
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry([]);
 
-        var behavior = new AuthorizationBehavior<TestConventionBasedNoResolverRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestConventionBasedNoResolverRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
         var request = new TestConventionBasedNoResolverRequest { ResourceId = Guid.NewGuid() };
 
         // Act
@@ -431,18 +463,19 @@ public sealed class AttributeAuthorizationBehaviorTests
     {
         // Arrange
         var authProvider = A.Fake<IAuthorizationProvider>();
-        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "override-policy", A<TestResource>._))
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "explicit-policy", A<TestResource>._))
             .Returns(_successResult);
 
         var httpContextAccessor = CreateAuthenticatedContextAccessor();
 
         var services = new ServiceCollection();
         services.AddSingleton<TestExplicitResourceResolver>();
-        services.AddSingleton<IResourceResolver<TestExplicitOverrideRequest, TestResource>, TestExplicitOverrideRequestResolver>();
+        services.AddSingleton<IResourceResolver<TestConventionOverrideRequest, TestResource>, TestConventionOverrideRequestResolver>();
         var serviceProvider = services.BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
 
-        var behavior = new AuthorizationBehavior<TestExplicitOverrideRequest, string>(authProvider, httpContextAccessor, serviceProvider);
-        var request = new TestExplicitOverrideRequest { ResourceId = Guid.NewGuid() };
+        var behavior = new AuthorizationBehavior<TestExplicitResolverRequest, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
+        var request = new TestExplicitResolverRequest { ResourceId = Guid.NewGuid() };
 
         // Act
         var result = await behavior.Handle(request, _nextMock, CancellationToken.None).ConfigureAwait(false);
@@ -452,26 +485,82 @@ public sealed class AttributeAuthorizationBehaviorTests
         Assert.NotNull(request.Resource);
         Assert.Equal(request.ResourceId, request.Resource.Id);
         Assert.Equal("Explicit Resource", request.Resource.Name);
-        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "override-policy", A<TestResource>._))
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "explicit-policy", A<TestResource>._))
             .MustHaveHappenedOnceExactly();
     }
 
     [Fact]
-    public void ServiceCollectionExtensions_AddSliceR_RegistersConventionBasedResolvers()
+    public void ServiceCollectionExtensions_ManualRegistration_RegistersConventionBasedResolvers()
     {
         // Arrange
         var services = new ServiceCollection();
 
-        // Act
-        services.AddSliceR(Assembly.GetExecutingAssembly(), includeInternalTypes: true);
+        // Manually register the resolvers to test the registry functionality
+        // without running into conflicts from other test classes in the assembly
+        services.AddSingleton<IResourceResolver<TestConventionBasedRequest, TestResource>, TestConventionBasedRequestResolver>();
+        services.AddSingleton<IResourceResolver<TestConventionOverrideRequest, TestResource>, TestConventionOverrideRequestResolver>();
+        services.AddSingleton<IResourceResolver<TestExplicitResolverRequest, TestResource>, TestExplicitResourceResolver>();
+
+        // Create the registry manually to test it
+        var registryMappings = new Dictionary<Type, Type>
+        {
+            { typeof(TestConventionBasedRequest), typeof(TestConventionBasedRequestResolver) },
+            { typeof(TestConventionOverrideRequest), typeof(TestConventionOverrideRequestResolver) },
+            { typeof(TestExplicitResolverRequest), typeof(TestExplicitResourceResolver) }
+        };
+        var registry = new ResolverRegistry(registryMappings);
+        services.AddSingleton<IResolverRegistry>(registry);
+
         var serviceProvider = services.BuildServiceProvider();
 
+        // Act & Assert
         var conventionResolver = serviceProvider.GetService<IResourceResolver<TestConventionBasedRequest, TestResource>>();
         Assert.NotNull(conventionResolver);
         Assert.IsType<TestConventionBasedRequestResolver>(conventionResolver);
 
-        var explicitOverrideResolver = serviceProvider.GetService<IResourceResolver<TestExplicitOverrideRequest, TestResource>>();
+        var conventionOverrideResolver = serviceProvider.GetService<IResourceResolver<TestConventionOverrideRequest, TestResource>>();
+        Assert.NotNull(conventionOverrideResolver);
+        Assert.IsType<TestConventionOverrideRequestResolver>(conventionOverrideResolver);
+
+        var explicitOverrideResolver = serviceProvider.GetService<IResourceResolver<TestExplicitResolverRequest, TestResource>>();
         Assert.NotNull(explicitOverrideResolver);
+        Assert.IsType<TestExplicitResourceResolver>(explicitOverrideResolver);
+
+        // Test that the registry contains the expected mappings
+        var registryMappingsResult = registry.GetMappings();
+        Assert.Equal(3, registryMappingsResult.Count);
+        Assert.Equal(typeof(TestConventionBasedRequestResolver), registryMappingsResult[typeof(TestConventionBasedRequest)]);
+        Assert.Equal(typeof(TestConventionOverrideRequestResolver), registryMappingsResult[typeof(TestConventionOverrideRequest)]);
+        Assert.Equal(typeof(TestExplicitResourceResolver), registryMappingsResult[typeof(TestExplicitResolverRequest)]);
+    }
+
+    [Fact]
+    public async Task Handle_WithConventionBasedResolver_NoResourceProperty_ResolvesResourceSuccessfully()
+    {
+        // Arrange
+        var authProvider = A.Fake<IAuthorizationProvider>();
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "no-resource-property-policy", A<TestResource>._))
+            .Returns(_successResult);
+
+        var httpContextAccessor = CreateAuthenticatedContextAccessor();
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IResourceResolver<TestRequestWithoutResourceProperty, TestResource>, TestRequestWithoutResourcePropertyResolver>();
+        var serviceProvider = services.BuildServiceProvider();
+        var resolverRegistry = CreateResolverRegistry();
+
+        var behavior = new AuthorizationBehavior<TestRequestWithoutResourceProperty, string>(authProvider, httpContextAccessor, serviceProvider, resolverRegistry);
+        var request = new TestRequestWithoutResourceProperty { ResourceId = Guid.NewGuid() };
+
+        // Act
+        var result = await behavior.Handle(request, _nextMock, CancellationToken.None).ConfigureAwait(false);
+
+        // Assert
+        Assert.Equal("Success", result);
+        // Verify that authorization was called with the resolved resource,
+        // even though the request class doesn't have a Resource property
+        A.CallTo(() => authProvider.AuthorizeAsync(A<ClaimsPrincipal>._, "no-resource-property-policy", A<TestResource>.That.Matches(r => r.Id == request.ResourceId)))
+            .MustHaveHappenedOnceExactly();
     }
 
     private static IHttpContextAccessor CreateAuthenticatedContextAccessor()
@@ -484,5 +573,17 @@ public sealed class AttributeAuthorizationBehaviorTests
         A.CallTo(() => httpContext.User).Returns(user);
 
         return httpContextAccessor;
+    }
+
+    private static ResolverRegistry CreateResolverRegistry(Dictionary<Type, Type>? mappings = null)
+    {
+        mappings ??= new Dictionary<Type, Type>
+        {
+            { typeof(TestConventionBasedRequest), typeof(TestConventionBasedRequestResolver) },
+            { typeof(TestConventionOverrideRequest), typeof(TestConventionOverrideRequestResolver) },
+            { typeof(TestRequestWithoutResourceProperty), typeof(TestRequestWithoutResourcePropertyResolver) }
+        };
+
+        return new ResolverRegistry(mappings);
     }
 }

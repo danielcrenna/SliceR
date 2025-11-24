@@ -22,6 +22,9 @@ public class ConventionBasedResourceResolverIntegrationTests
     private readonly RequestHandlerDelegate<Unit> _nextMock = _ => Task.FromResult(Unit.Value);
     private readonly AuthorizationResult _successResult = AuthorizationResult.Success();
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     [Fact]
     public async Task AuthorizationBehavior_WithConventionBasedResolver_ResolvesAndAuthorizes()
     {
@@ -47,7 +50,7 @@ public class ConventionBasedResourceResolverIntegrationTests
 
         var serviceProvider = services.BuildServiceProvider();
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
 
         var documentId = Guid.NewGuid();
         var request = new UpdateDocumentCommand { DocumentId = documentId, NewContent = "New Content" };
@@ -86,7 +89,7 @@ public class ConventionBasedResourceResolverIntegrationTests
 
         var serviceProvider = services.BuildServiceProvider();
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
 
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
@@ -123,7 +126,7 @@ public class ConventionBasedResourceResolverIntegrationTests
 
         var serviceProvider = services.BuildServiceProvider();
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
 
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 
@@ -160,7 +163,7 @@ public class ConventionBasedResourceResolverIntegrationTests
 
         var serviceProvider = services.BuildServiceProvider();
         var behavior = new AuthorizationBehavior<UpdateDocumentCommand, Unit>(
-            authProvider, httpContextAccessor, serviceProvider);
+            authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
 
         var request = new UpdateDocumentCommand { DocumentId = Guid.NewGuid(), NewContent = "New Content" };
 

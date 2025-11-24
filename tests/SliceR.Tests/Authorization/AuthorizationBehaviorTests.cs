@@ -28,6 +28,9 @@ public class AuthorizationBehaviorTests
 
     private readonly AuthorizationFailure _customFailure = AuthorizationFailure.Failed(Array.Empty<AuthorizationFailureReason>());
 
+    private static ResolverRegistry CreateEmptyResolverRegistry() =>
+        new ResolverRegistry(new Dictionary<Type, Type>());
+
     public AuthorizationBehaviorTests()
     {
         var authFailure = AuthorizationFailure.Failed([new AuthorizationFailureReason(A.Fake<IAuthorizationHandler>(), "Test error message")]);
@@ -44,7 +47,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(null);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
 
         // Act & Assert
@@ -68,7 +71,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
 
         // Act & Assert
@@ -92,7 +95,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = null };
 
         // Act
@@ -115,7 +118,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = string.Empty };
 
         // Act
@@ -143,7 +146,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
 
         // Act
@@ -167,7 +170,7 @@ public class AuthorizationBehaviorTests
 
         var resource = new object();
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestResourceRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestResourceRequest { PolicyName = "test-policy", Resource = resource };
 
         // Act
@@ -190,7 +193,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
 
         // Act & Assert
@@ -214,7 +217,7 @@ public class AuthorizationBehaviorTests
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(httpContext);
 
         var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider);
+        var behavior = new AuthorizationBehavior<TestAuthorizedRequest, string>(authProvider, httpContextAccessor, serviceProvider, CreateEmptyResolverRegistry());
         var request = new TestAuthorizedRequest { PolicyName = "test-policy" };
 
         // Act & Assert
