@@ -1,6 +1,6 @@
 # SliceR
 
-SliceR is a lightweight library that integrates MediatR with FluentValidation and ASP.NET Core Authorization to enable clean, vertical "slicing" of application features. 
+SliceR is a lightweight library that integrates MediatR with FluentValidation and ASP.NET Core Authorization to enable clean, vertical "slicing" of application features.
 
 This approach helps maintain separation of concerns while ensuring proper validation and authorization across your application.
 
@@ -11,7 +11,9 @@ This approach helps maintain separation of concerns while ensuring proper valida
 - **Policy-Based Authorization**: Enforces authorization policies on requests
 - **Resource-Based Authorization**: Supports authorization against specific resources
 - **Attribute-Based Authorization**: Declarative authorization using attributes
+- **Convention-Based Resource Resolvers**: Automatic resolver discovery with performance-optimized registry
 - **ASP.NET Core Integration**: Provides middleware and exception filters for web applications
+- **Multi-Framework Support**: Targets .NET 8.0, .NET 9.0, and .NET 10.0
 - **Minimal Configuration**: Set up with a single extension method
 
 ## Benefits of the Vertical Slice Architecture
